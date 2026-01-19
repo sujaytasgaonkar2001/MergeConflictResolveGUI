@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 REPO_PATH = os.environ.get(
     "GIT_REPO_PATH",
-    "/var/fpwork/stasgaon/perf4/perftests-fuzzy"
+    "/var/www/path"
 )
 
 @app.route('/')
