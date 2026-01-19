@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Resolve Conflicts: {{ file_path }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+/* ---------- BASE ---------- */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 20px;
+    color: #333;
+}
+
+h1 { color: #005f6b; }
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+/* ---------- CONFLICT BOX ---------- */
+.conflict-box {
+    background: #fff8db;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 30px 0;
+}
+
+/* ---------- SUMMARY ---------- */
+.conflict-summary {
+    font-size: 14px;
+    background: #eef5ff;
+    border-left: 4px solid #007bff;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+}
+
+/* ---------- TOOLBAR ---------- */
+.diff-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+/* ---------- SIDES ---------- */
+.conflict-content {
+    display: flex;
+    gap: 12px;
+}
+
+.side {
+    width: 50%;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.ours {
+    background-color: #d4edda;
+    border: 1px solid #28a745;
+}
+
+.theirs {
+    background-color: #f8d7da;
+    border: 1px solid #dc3545;
+}
+
+.side-title {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+/* ---------- CODE VIEW ---------- */
+pre.code {
+    flex: 1;
+    margin: 0;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.2);
+    background: inherit;
+    font-family: monospace;
+    overflow: auto;
+}
+
+.code-line {
+    display: block;
+    white-space: pre-wrap;
+}
+
+.code-line i {
+    display: inline-block;
+    width: 32px;
+    color: #777;
+    user-select: none;
+}
+
+/* ---------- DIFF STATES ---------- */
+.diff-unchanged { opacity: 0.55; }
+.diff-added { background: rgba(40,167,69,0.25); }
+.diff-removed {
+    background: rgba(220,53,69,0.25);
+    text-decoration: line-through;
+}
+
+/* ---------- MANUAL EDIT ---------- */
+.manual-form {
+    display: none;
+    margin-top: 8px;
+}
+
+.manual-form textarea {
+    width: 100%;
+    height: 120px;
+    font-family: monospace;
+}
+
+.manual-actions {
+    margin-top: 6px;
+    display: flex;
+    gap: 6px;
+}
+
+.edit-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+/* ---------- BUTTONS ---------- */
+.take-ours { background: #28a745; color: #fff; }
+.take-theirs { background: #dc3545; color: #fff; }
+
+.conflict-actions {
+    text-align: right;
+    margin-top: 14px;
+}
+
+.conflict-actions button {
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+</style>
+
+<!-- ---------- EDIT TOGGLE ---------- -->
+<script>
+function startEdit(baseId) {
+    document.getElementById(baseId + "-pre").style.display = "none";
+    document.getElementById(baseId + "-form").style.display = "block";
+}
+
+function cancelEdit(baseId) {
+    const pre = document.getElementById(baseId + "-pre");
+    const form = document.getElementById(baseId + "-form");
+    const textarea = form.querySelector("textarea");
+
+    textarea.value = textarea.dataset.original;
+    form.style.display = "none";
+    pre.style.display = "block";
+}
+</script>
+
+<!-- ---------- DIFF + SUMMARY ---------- -->
+<script>
+function toggleUnchanged(hide) {
+    document.querySelectorAll('.diff-unchanged').forEach(el => {
+        el.style.display = hide ? 'none' : 'block';
+    });
+}
+
+function markDiff(conflictId) {
+    const ours = Array.from(
+        document.querySelectorAll(`#ours-${conflictId}-pre .code-line`)
+    );
+    const theirs = Array.from(
+        document.querySelectorAll(`#theirs-${conflictId}-pre .code-line`)
+    );
+
+    const oursText = ours.map(l => l.textContent.trim());
+    const theirsText = theirs.map(l => l.textContent.trim());
+
+    ours.forEach((line, i) => {
+        if (theirsText.includes(oursText[i])) {
+            line.classList.add("diff-unchanged");
+        } else {
+            line.classList.add("diff-added");
+        }
+    });
+
+    theirs.forEach((line, i) => {
+        if (oursText.includes(theirsText[i])) {
+            line.classList.add("diff-unchanged");
+        } else {
+            line.classList.add("diff-removed");
+        }
+    });
+}
+
+function generateSummary(conflictId) {
+    const summaryEl = document.getElementById(`summary-${conflictId}`);
+    summaryEl.innerHTML = `Difference: <strong>Code changes detected</strong>`;
+}
+
+window.addEventListener("load", () => {
+    {% for conflict in conflicts %}
+        markDiff("{{ conflict.id }}");
+        generateSummary("{{ conflict.id }}");
+    {% endfor %}
+});
+</script>
+
+</head>
+
+<body>
+
+<h1>Resolve Conflicts in <code>{{ file_path }}</code></h1>
+<a href="{{ url_for('index') }}" class="back-link">&larr; Back</a>
+
+{% for conflict in conflicts %}
+<div class="conflict-box">
+
+<div class="conflict-summary" id="summary-{{ conflict.id }}">
+    Difference: <strong>Analyzing…</strong>
+</div>
+
+<div class="diff-toolbar">
+    <label>
+        <input type="checkbox" onchange="toggleUnchanged(this.checked)">
+        Show only differences
+    </label>
+</div>
+
+<div class="conflict-content">
+
+<!-- OURS -->
+<div class="side ours">
+    <div class="side-title">
+        OURS
+        <button class="edit-btn" onclick="startEdit('ours-{{ conflict.id }}')">✏️</button>
+    </div>
+
+    <pre id="ours-{{ conflict.id }}-pre" class="code">
+{% for line in conflict.ours %}
+<span class="code-line"><i>{{ loop.index }}</i>{{ line }}</span>
+{% endfor %}
+    </pre>
+
+    <form id="ours-{{ conflict.id }}-form" class="manual-form"
+          action="{{ url_for('perform_resolution') }}" method="post">
+        <input type="hidden" name="file_path" value="{{ file_path }}">
+        <input type="hidden" name="conflict_id" value="{{ conflict.id }}">
+        <input type="hidden" name="side" value="manual">
+
+        <textarea name="manual_text"
+                  data-original="{{ conflict.ours | join('\n') }}">{{ conflict.ours | join('\n') }}</textarea>
+
+        <div class="manual-actions">
+            <button type="button" onclick="cancelEdit('ours-{{ conflict.id }}')">✖</button>
+            <button type="submit" class="take-ours">Save</button>
+        </div>
+    </form>
+</div>
+
+<!-- THEIRS -->
+<div class="side theirs">
+    <div class="side-title">
+        THEIRS
+        <button class="edit-btn" onclick="startEdit('theirs-{{ conflict.id }}')">✏️</button>
+    </div>
+
+    <pre id="theirs-{{ conflict.id }}-pre" class="code">
+{% for line in conflict.theirs %}
+<span class="code-line"><i>{{ loop.index }}</i>{{ line }}</span>
+{% endfor %}
+    </pre>
+
+    <form id="theirs-{{ conflict.id }}-form" class="manual-form"
+          action="{{ url_for('perform_resolution') }}" method="post">
+        <input type="hidden" name="file_path" value="{{ file_path }}">
+        <input type="hidden" name="conflict_id" value="{{ conflict.id }}">
+        <input type="hidden" name="side" value="manual">
+
+        <textarea name="manual_text"
+                  data-original="{{ conflict.theirs | join('\n') }}">{{ conflict.theirs | join('\n') }}</textarea>
+
+        <div class="manual-actions">
+            <button type="button" onclick="cancelEdit('theirs-{{ conflict.id }}')">✖</button>
+            <button type="submit" class="take-theirs">Save</button>
+        </div>
+    </form>
+</div>
+
+</div>
+
+<div class="conflict-actions">
+    <form action="{{ url_for('perform_resolution') }}" method="post" style="display:inline">
+        <input type="hidden" name="file_path" value="{{ file_path }}">
+        <input type="hidden" name="conflict_id" value="{{ conflict.id }}">
+        <input type="hidden" name="side" value="ours">
+        <button class="take-ours">Take Ours</button>
+    </form>
+
+    <form action="{{ url_for('perform_resolution') }}" method="post" style="display:inline">
+        <input type="hidden" name="file_path" value="{{ file_path }}">
+        <input type="hidden" name="conflict_id" value="{{ conflict.id }}">
+        <input type="hidden" name="side" value="theirs">
+        <button class="take-theirs">Take Theirs</button>
+    </form>
+</div>
+
+</div>
+{% endfor %}
+
+</body>
+</html>

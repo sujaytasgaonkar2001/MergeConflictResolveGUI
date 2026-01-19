@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Conflict Resolver</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1 { color: #005f6b; }
+        ul { list-style-type: none; padding: 0; }
+        li { background-color: #fff; margin-bottom: 10px; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        a { text-decoration: none; color: #007bff; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .no-conflicts { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>Git Conflict Resolver</h1>
+    <h2>Conflicting Files</h2>
+
+    {% if conflicting_files %}
+        <ul>
+            {% for file in conflicting_files %}
+                <li><a href="{{ url_for('resolve_file', file_path=file) }}">{{ file }}</a></li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="no-conflicts">No merge conflicts detected. Good job!</p>
+    {% endif %}
+</body>
+</html>
